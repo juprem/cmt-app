@@ -6,6 +6,9 @@ import { SoundboardPage } from '@/app/components/SoundboardPage';
 import { SalaryPage } from '@/app/components/SalaryPage';
 import { AnalyticsPage } from '@/app/components/AnalyticsPage';
 import { BottomNav } from '@/app/components/BottomNav';
+import { AuthPage } from '@/app/components/AuthPage';
+import { AccountMenu } from '@/app/components/AccountMenu';
+import { AuthProvider, useAuth } from '@/app/lib/AuthContext';
 
 // Types
 export interface SalaryProfile {
@@ -17,7 +20,8 @@ export interface SalaryProfile {
 
 export type TabType = 'timer' | 'sounds' | 'salary' | 'stats';
 
-export default function App() {
+function AppContent() {
+  const { isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('timer');
   const [profiles, setProfiles] = useState<SalaryProfile[]>([
     { id: '1', name: 'Standard Job', hourlyRate: 35, isDefault: true },
@@ -27,6 +31,36 @@ export default function App() {
   const [activeProfileId, setActiveProfileId] = useState<string>('1');
 
   const currentProfile = profiles.find(p => p.id === activeProfileId) || profiles[0];
+
+  // Initialize database on app start
+  useEffect(() => {
+    const initDB = async () => {
+      try {
+        const { authService } = await import('@/app/lib/auth');
+        await authService.initDatabase();
+      } catch (error) {
+        console.error('Failed to initialize database:', error);
+      }
+    };
+    initDB();
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-indigo-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-6xl mb-4 animate-spin">
+            💩
+          </div>
+          <p className="text-white text-lg font-medium">Loading CTM...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthPage />;
+  }
 
   return (
     <ConfigProvider
@@ -65,6 +99,10 @@ export default function App() {
             animation: rainbow-pulse 10s linear infinite;
           }
         `}} />
+        
+        {/* Account Menu */}
+        <AccountMenu />
+        
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto relative pb-20">
           {activeTab === 'timer' && <TimerPage hourlyRate={currentProfile.hourlyRate} />}
@@ -84,5 +122,13 @@ export default function App() {
       <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
       </div>
     </ConfigProvider>
+  );
+}
+
+export default function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
