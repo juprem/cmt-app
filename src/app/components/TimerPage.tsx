@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Play, Pause, RotateCcw, Droplets } from 'lucide-react';
 import confetti from 'canvas-confetti';
+import { useAuth } from '@/app/lib/AuthContext';
 
 interface TimerPageProps {
   hourlyRate: number;
@@ -18,11 +19,13 @@ const statusMessages = [
 ];
 
 export const TimerPage = ({ hourlyRate }: TimerPageProps) => {
+  const { user } = useAuth();
   const [isActive, setIsActive] = useState(false);
   const [seconds, setSeconds] = useState(0);
   const [earnings, setEarnings] = useState(0);
   const [statusIndex, setStatusIndex] = useState(0);
   const [poopLevel, setPoopLevel] = useState(1);
+  const [sessionStartTime, setSessionStartTime] = useState<Date | null>(null);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -71,11 +74,34 @@ export const TimerPage = ({ hourlyRate }: TimerPageProps) => {
     return `${hrs.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleStop = () => {
+  const handleStop = async () => {
     setIsActive(false);
-    // Play flush sound effect visualization?
+    
+    // Save session to database if there's a user and the session has duration
+    if (user && seconds > 0) {
+      try {
+        const { authService } = await import('@/app/lib/auth');
+        await authService.createSession({
+          user_id: user.id,
+          duration_seconds: seconds,
+          earnings: earnings,
+          hourly_rate: hourlyRate,
+          started_at: sessionStartTime || new Date(Date.now() - seconds * 1000),
+          poop_level: poopLevel,
+        });
+        console.log('Session saved to database');
+      } catch (error) {
+        console.error('Failed to save session:', error);
+      }
+    }
+    
+    // Reset timer state
     setSeconds(0);
+    setEarnings(0);
     setPoopLevel(1);
+    setSessionStartTime(null);
+    
+    // Celebration confetti
     confetti({
       particleCount: 150,
       velocity: 30,
@@ -236,7 +262,10 @@ export const TimerPage = ({ hourlyRate }: TimerPageProps) => {
           {!isActive ? (
             <motion.button
               whileTap={{ scale: 0.95 }}
-              onClick={() => setIsActive(true)}
+              onClick={() => {
+                setIsActive(true);
+                setSessionStartTime(new Date());
+              }}
               className="flex-1 h-16 rounded-3xl bg-green-500 hover:bg-green-400 text-white font-black text-xl flex items-center justify-center gap-2 shadow-lg shadow-green-500/30 border-b-4 border-green-700 active:border-b-0 active:translate-y-1 transition-all"
             >
               <Play fill="currentColor" size={24} />

@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, Clock, Calendar, Trophy, Zap, Star, Target, Crown } from 'lucide-react';
 import { Progress, List, Avatar } from 'antd';
+import { useAuth } from '@/app/lib/AuthContext';
 
 const achievements = [
   { id: 1, name: 'First Flush', icon: '🌱', description: 'Complete your first session.', unlocked: true },
@@ -10,13 +11,75 @@ const achievements = [
   { id: 4, name: 'Golden Plunger', icon: '🏆', description: 'Maintain a 45min/day average.', unlocked: false },
 ];
 
-const recentSessions = [
-  { id: 1, date: 'Today, 10:45', duration: '12m 30s', earnings: '15.40€' },
-  { id: 2, date: 'Yesterday, 14:20', duration: '24m 10s', earnings: '32.12€' },
-  { id: 3, date: 'Jan 28, 09:15', duration: '08m 45s', earnings: '9.80€' },
-];
-
 export const AnalyticsPage = () => {
+  const { user } = useAuth();
+  const [userStats, setUserStats] = useState<any>(null);
+  const [recentSessions, setRecentSessions] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadAnalyticsData = async () => {
+      if (!user) return;
+
+      try {
+        const { authService } = await import('@/app/lib/auth');
+        
+        // Load user statistics
+        const stats = await authService.getUserStats(user.id);
+        setUserStats(stats);
+
+        // Load recent sessions
+        const sessions = await authService.getUserSessions(user.id, 10, 0);
+        setRecentSessions(sessions);
+      } catch (error) {
+        console.error('Failed to load analytics data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadAnalyticsData();
+  }, [user]);
+
+  const formatDuration = (seconds: number) => {
+    const hrs = Math.floor(seconds / 3600);
+    const mins = Math.floor((seconds % 3600) / 60);
+    const secs = seconds % 60;
+    
+    if (hrs > 0) {
+      return `${hrs}h ${mins}m ${secs}s`;
+    } else if (mins > 0) {
+      return `${mins}m ${secs}s`;
+    } else {
+      return `${secs}s`;
+    }
+  };
+
+  const formatDate = (date: Date) => {
+    const d = new Date(date);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - d.getTime());
+    const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 0) {
+      return `Today, ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+    } else if (diffDays === 1) {
+      return `Yesterday, ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+    } else {
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' + 
+             d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="p-6 bg-slate-950 pb-8">
+        <div className="flex items-center justify-center min-h-64">
+          <div className="text-white text-lg">Loading analytics...</div>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="p-6 bg-slate-950 pb-8">
       <div className="mb-8">
@@ -27,10 +90,38 @@ export const AnalyticsPage = () => {
       {/* 2x2 Stats Grid */}
       <div className="grid grid-cols-2 gap-4 mb-8">
         {[
-          { label: 'Total Gains', val: '€1,240', sub: '+12% vs last wk', icon: TrendingUp, color: 'text-green-400', bg: 'bg-green-400/10' },
-          { label: 'Time Invested', val: '42h 12m', sub: 'Weekly total', icon: Clock, color: 'text-purple-400', bg: 'bg-purple-400/10' },
-          { label: 'Avg Session', val: '18m 40s', sub: 'Optimal break', icon: Calendar, color: 'text-blue-400', bg: 'bg-blue-400/10' },
-          { label: 'Best Day', val: '€142.10', sub: 'Jan 15, 2026', icon: Trophy, color: 'text-yellow-400', bg: 'bg-yellow-400/10' },
+          { 
+            label: 'Total Gains', 
+            val: `€${userStats?.totalEarnings.toFixed(2) || '0.00'}`, 
+            sub: `From ${userStats?.totalSessions || 0} sessions`, 
+            icon: TrendingUp, 
+            color: 'text-green-400', 
+            bg: 'bg-green-400/10' 
+          },
+          { 
+            label: 'Time Invested', 
+            val: formatDuration(userStats?.totalDuration || 0), 
+            sub: 'Total bathroom time', 
+            icon: Clock, 
+            color: 'text-purple-400', 
+            bg: 'bg-purple-400/10' 
+          },
+          { 
+            label: 'Avg Session', 
+            val: formatDuration(userStats?.averageDuration || 0), 
+            sub: 'Typical break length', 
+            icon: Calendar, 
+            color: 'text-blue-400', 
+            bg: 'bg-blue-400/10' 
+          },
+          { 
+            label: 'Avg Earnings', 
+            val: `€${userStats?.averageEarnings.toFixed(2) || '0.00'}`, 
+            sub: 'Per session average', 
+            icon: Trophy, 
+            color: 'text-yellow-400', 
+            bg: 'bg-yellow-400/10' 
+          },
         ].map((stat, i) => (
           <motion.div
             key={i}
@@ -101,22 +192,32 @@ export const AnalyticsPage = () => {
       <div className="mb-4 px-2">
         <h5 className="text-slate-400 font-bold text-xs uppercase tracking-wider mb-4">Past Sessions</h5>
         <div className="space-y-3">
-          {recentSessions.map((session) => (
-            <div key={session.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-500">
-                  <Zap size={18} />
+          {recentSessions.length > 0 ? (
+            recentSessions.map((session) => (
+              <div key={session.id} className="flex items-center justify-between p-4 rounded-2xl bg-white/5 border border-white/5">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-slate-500">
+                    <Zap size={18} />
+                  </div>
+                  <div>
+                    <h6 className="text-sm font-bold text-white">{formatDate(session.started_at)}</h6>
+                    <p className="text-[10px] text-slate-500 font-medium">{formatDuration(session.duration_seconds)}</p>
+                  </div>
                 </div>
-                <div>
-                  <h6 className="text-sm font-bold text-white">{session.date}</h6>
-                  <p className="text-[10px] text-slate-500 font-medium">{session.duration}</p>
+                <div className="text-right">
+                  <span className="text-sm font-black text-green-400">+€{session.earnings.toFixed(2)}</span>
+                  {session.poop_level > 1 && (
+                    <div className="text-[8px] text-slate-500">LVL {session.poop_level}</div>
+                  )}
                 </div>
               </div>
-              <div className="text-right">
-                <span className="text-sm font-black text-green-400">+{session.earnings}</span>
-              </div>
+            ))
+          ) : (
+            <div className="text-center py-8 text-slate-500">
+              <div className="text-4xl mb-2">🚽</div>
+              <p className="text-sm">No sessions yet. Start your first bathroom timer!</p>
             </div>
-          ))}
+          )}
         </div>
       </div>
       

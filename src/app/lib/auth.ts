@@ -29,6 +29,30 @@ export interface AuthResult {
   error?: string;
 }
 
+export interface Session {
+  id: string;
+  user_id: string;
+  duration_seconds: number;
+  earnings: number;
+  hourly_rate: number;
+  started_at: Date;
+  ended_at: Date;
+  poop_level: number;
+  notes?: string;
+  created_at: Date;
+}
+
+export interface CreateSessionData {
+  user_id: string;
+  duration_seconds: number;
+  earnings: number;
+  hourly_rate: number;
+  started_at: Date;
+  ended_at?: Date;
+  poop_level?: number;
+  notes?: string;
+}
+
 class AuthService {
   // Initialize database tables
   async initDatabase() {
@@ -43,6 +67,31 @@ class AuthService {
           created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
+      `;
+
+      // Create sessions table
+      await sql`
+        CREATE TABLE IF NOT EXISTS sessions (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          duration_seconds INTEGER NOT NULL,
+          earnings DECIMAL(10, 2) NOT NULL,
+          hourly_rate DECIMAL(10, 2) NOT NULL,
+          started_at TIMESTAMP WITH TIME ZONE NOT NULL,
+          ended_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+          poop_level INTEGER DEFAULT 1,
+          notes TEXT,
+          created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+        );
+      `;
+
+      // Create indexes for better performance
+      await sql`
+        CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
+      `;
+      
+      await sql`
+        CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at DESC);
       `;
 
       console.log('Database initialized successfully');
@@ -167,6 +216,103 @@ class AuthService {
     } catch (error) {
       console.error('Get user error:', error);
       return null;
+    }
+  }
+
+  // Create new session
+  async createSession(sessionData: CreateSessionData): Promise<Session | null> {
+    try {
+      const result = await sql`
+        INSERT INTO sessions (user_id, duration_seconds, earnings, hourly_rate, started_at, ended_at, poop_level, notes)
+        VALUES (
+          ${sessionData.user_id},
+          ${sessionData.duration_seconds},
+          ${sessionData.earnings},
+          ${sessionData.hourly_rate},
+          ${sessionData.started_at},
+          ${sessionData.ended_at || new Date()},
+          ${sessionData.poop_level || 1},
+          ${sessionData.notes || null}
+        )
+        RETURNING id, user_id, duration_seconds, earnings, hourly_rate, started_at, ended_at, poop_level, notes, created_at
+      `;
+
+      return result[0] || null;
+    } catch (error) {
+      console.error('Create session error:', error);
+      return null;
+    }
+  }
+
+  // Get sessions for user
+  async getUserSessions(userId: string, limit: number = 50, offset: number = 0): Promise<Session[]> {
+    try {
+      const result = await sql`
+        SELECT id, user_id, duration_seconds, earnings, hourly_rate, started_at, ended_at, poop_level, notes, created_at
+        FROM sessions
+        WHERE user_id = ${userId}
+        ORDER BY created_at DESC
+        LIMIT ${limit} OFFSET ${offset}
+      `;
+
+      return result;
+    } catch (error) {
+      console.error('Get user sessions error:', error);
+      return [];
+    }
+  }
+
+  // Get session statistics for user
+  async getUserStats(userId: string): Promise<{
+    totalSessions: number;
+    totalDuration: number;
+    totalEarnings: number;
+    averageEarnings: number;
+    averageDuration: number;
+  }> {
+    try {
+      const result = await sql`
+        SELECT 
+          COUNT(*) as total_sessions,
+          SUM(duration_seconds) as total_duration,
+          SUM(earnings) as total_earnings,
+          AVG(earnings) as avg_earnings,
+          AVG(duration_seconds) as avg_duration
+        FROM sessions
+        WHERE user_id = ${userId}
+      `;
+
+      const stats = result[0];
+      return {
+        totalSessions: parseInt(stats.total_sessions) || 0,
+        totalDuration: parseInt(stats.total_duration) || 0,
+        totalEarnings: parseFloat(stats.total_earnings) || 0,
+        averageEarnings: parseFloat(stats.avg_earnings) || 0,
+        averageDuration: parseInt(stats.avg_duration) || 0,
+      };
+    } catch (error) {
+      console.error('Get user stats error:', error);
+      return {
+        totalSessions: 0,
+        totalDuration: 0,
+        totalEarnings: 0,
+        averageEarnings: 0,
+        averageDuration: 0,
+      };
+    }
+  }
+
+  // Delete session
+  async deleteSession(sessionId: string, userId: string): Promise<boolean> {
+    try {
+      const result = await sql`
+        DELETE FROM sessions 
+        WHERE id = ${sessionId} AND user_id = ${userId}
+      `;
+      return result.count > 0;
+    } catch (error) {
+      console.error('Delete session error:', error);
+      return false;
     }
   }
 }
