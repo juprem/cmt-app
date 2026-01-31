@@ -1,16 +1,16 @@
 import { neon } from '@neondatabase/serverless';
-import bcrypt from 'bcryptjs';
-import * as jose from 'jose';
-// Environment variables in Vite are accessed via import.meta.env
+import { createAuthClient } from "@neondatabase/auth";
 
-
+// Base SQL client for our data (sessions, stats)
 const sql = neon(import.meta.env.VITE_NEON_DATABASE_URL!);
+
+// Neon Auth Client
+export const authClient = createAuthClient(import.meta.env.VITE_NEON_AUTH_URL!);
 
 export interface User {
   id: string;
   email: string;
   name: string;
-  password_hash: string;
   hourly_rate?: number;
   created_at: Date;
   updated_at: Date;
@@ -24,7 +24,7 @@ export interface CreateUserData {
 
 export interface AuthResult {
   success: boolean;
-  user?: Omit<User, 'password_hash'>;
+  user?: User;
   token?: string;
   error?: string;
 }
@@ -54,37 +54,22 @@ export interface CreateSessionData {
 }
 
 class AuthService {
-  // Initialize database tables
+  // Initialize ONLY our extensions/app tables
   async initDatabase() {
     try {
-      // Create users table
       await sql`
-        CREATE TABLE IF NOT EXISTS users (
-          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          email VARCHAR(255) UNIQUE NOT NULL,
-          name VARCHAR(255) NOT NULL,
-          password_hash VARCHAR(255) NOT NULL,
+        CREATE TABLE IF NOT EXISTS user_profiles (
+          user_id TEXT PRIMARY KEY,
           hourly_rate DECIMAL(10, 2) DEFAULT 0,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
       `;
 
-      // Migration: Add hourly_rate column if it doesn't exist (for existing databases)
-      await sql`
-        DO $$ 
-        BEGIN 
-          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='hourly_rate') THEN
-            ALTER TABLE users ADD COLUMN hourly_rate DECIMAL(10, 2) DEFAULT 0;
-          END IF;
-        END $$;
-      `;
-
-      // Create sessions table
       await sql`
         CREATE TABLE IF NOT EXISTS sessions (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-          user_id UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+          user_id TEXT NOT NULL,
           duration_seconds INTEGER NOT NULL,
           earnings DECIMAL(10, 2) NOT NULL,
           hourly_rate DECIMAL(10, 2) NOT NULL,
@@ -96,16 +81,10 @@ class AuthService {
         );
       `;
 
-      // Create indexes for better performance
-      await sql`
-        CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
-      `;
+      await sql`CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);`;
+      await sql`CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at DESC);`;
 
-      await sql`
-        CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at DESC);
-      `;
-
-      console.log('Database initialized successfully');
+      console.log('App database initialized');
       return true;
     } catch (error) {
       console.error('Database initialization failed:', error);
@@ -113,126 +92,117 @@ class AuthService {
     }
   }
 
-  // Register new user
+  // Register new user via Neon Auth
   async register(userData: CreateUserData): Promise<AuthResult> {
     try {
-      // Check if user already exists
-      const existingUsers = await sql`
-        SELECT id FROM users WHERE email = ${userData.email}
-      `;
+      const result = await authClient.signUp.email({
+        email: userData.email,
+        password: userData.password,
+        name: userData.name,
+      });
 
-      if (existingUsers.length > 0) {
-        return { success: false, error: 'User with this email already exists' };
+      if (result.error) {
+        return { success: false, error: result.error.message || 'Registration failed' };
       }
 
-      // Hash password
-      const passwordHash = await bcrypt.hash(userData.password, 12);
+      const data = result.data as any;
+      const user = data.user;
+      const token = data.token || data.session?.id;
 
-      // Create user
-      const result = await sql`
-        INSERT INTO users (email, name, password_hash)
-        VALUES (${userData.email}, ${userData.name}, ${passwordHash})
-        RETURNING id, email, name, hourly_rate, created_at, updated_at
-      ` as any[];
+      if (user?.id) {
+        await sql`
+          INSERT INTO user_profiles (user_id, hourly_rate)
+          VALUES (${user.id}, 0)
+          ON CONFLICT (user_id) DO NOTHING
+        `;
+      }
 
-      const user = result[0];
-
-      // Generate JWT token
-      const secret = new TextEncoder().encode(import.meta.env.VITE_JWT_SECRET!);
-      const token = await new jose.SignJWT({ userId: user.id, email: user.email })
-        .setProtectedHeader({ alg: 'HS256' })
-        .setExpirationTime(import.meta.env.VITE_JWT_EXPIRES_IN || '7d')
-        .sign(secret);
+      const profile = await this.getUserProfile(user.id);
 
       return {
         success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          created_at: user.created_at,
-          updated_at: user.updated_at
-        },
+        user: this.mapNeonUserToAppUser(user, profile?.hourly_rate || 0),
         token
       };
-    } catch (error) {
-      console.error('Registration error:', error);
-      return { success: false, error: 'Registration failed' };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Registration failed' };
     }
   }
 
-  // Login user
+  // Login via Neon Auth
   async login(email: string, password: string): Promise<AuthResult> {
     try {
-      // Find user
-      const result = await sql`
-        SELECT id, email, name, password_hash, hourly_rate, created_at, updated_at
-        FROM users WHERE email = ${email}
-      ` as any[];
+      const result = await authClient.signIn.email({
+        email,
+        password,
+      });
 
-      if (result.length === 0) {
-        return { success: false, error: 'Invalid email or password' };
+      if (result.error) {
+        return { success: false, error: result.error.message || 'Login failed' };
       }
 
-      const user = result[0];
+      const data = result.data as any;
+      const user = data.user;
+      const token = data.token || data.session?.id;
 
-      // Verify password
-      const isValidPassword = await bcrypt.compare(password, user.password_hash);
-      if (!isValidPassword) {
-        return { success: false, error: 'Invalid email or password' };
-      }
-
-      // Generate JWT token
-      const secret = new TextEncoder().encode(import.meta.env.VITE_JWT_SECRET!);
-      const token = await new jose.SignJWT({ userId: user.id, email: user.email })
-        .setProtectedHeader({ alg: 'HS256' })
-        .setExpirationTime(import.meta.env.VITE_JWT_EXPIRES_IN || '7d')
-        .sign(secret);
+      const profile = await this.getUserProfile(user.id);
 
       return {
         success: true,
-        user: {
-          id: user.id,
-          email: user.email,
-          name: user.name,
-          created_at: user.created_at,
-          updated_at: user.updated_at
-        },
+        user: this.mapNeonUserToAppUser(user, profile?.hourly_rate || 0),
         token
       };
-    } catch (error) {
-      console.error('Login error:', error);
-      return { success: false, error: 'Login failed' };
+    } catch (error: any) {
+      return { success: false, error: error.message || 'Login failed' };
     }
   }
 
-  // Verify JWT token
-  async verifyToken(token: string): Promise<any> {
+  // Verify session/token
+  async verifyToken(_token: string): Promise<any> {
     try {
-      const secret = new TextEncoder().encode(import.meta.env.VITE_JWT_SECRET!);
-      const { payload } = await jose.jwtVerify(token, secret);
-      return payload;
+      const { data } = await authClient.getSession();
+      if (data) {
+        return { userId: data.user.id, email: data.user.email };
+      }
+      return null;
     } catch (error) {
       return null;
     }
   }
 
-  // Get user by ID
-  async getUserById(userId: string): Promise<Omit<User, 'password_hash'> | null> {
-    try {
-      const result = await sql`
-        SELECT id, email, name, hourly_rate, created_at, updated_at
-        FROM users WHERE id = ${userId}
-      ` as any[];
+  async getUserProfile(userId: string) {
+    const result = await sql`SELECT * FROM user_profiles WHERE user_id = ${userId}`;
+    return result[0] || null;
+  }
 
-      return (result[0] as Omit<User, 'password_hash'>) || null;
+  private mapNeonUserToAppUser(neonUser: any, hourlyRate: number): User {
+    return {
+      id: neonUser.id,
+      email: neonUser.email,
+      name: neonUser.name,
+      hourly_rate: Number(hourlyRate || 0),
+      created_at: new Date(neonUser.createdAt || Date.now()),
+      updated_at: new Date(neonUser.updatedAt || Date.now())
+    };
+  }
+
+  async getUserById(userId: string): Promise<User | null> {
+    try {
+      const { data } = await authClient.getSession();
+      const neonUser = data?.user;
+      if (!neonUser || neonUser.id !== userId) {
+        // Option additionally fetch basic info if Neon Auth allows user lookup by ID
+      }
+
+      if (!neonUser) return null;
+
+      const profile = await this.getUserProfile(userId);
+      return this.mapNeonUserToAppUser(neonUser, profile?.hourly_rate || 0);
     } catch (error) {
-      console.error('Get user error:', error);
       return null;
     }
   }
 
-  // Create new session
   async createSession(sessionData: CreateSessionData): Promise<Session | null> {
     try {
       const result = await sql`
@@ -247,6 +217,7 @@ class AuthService {
           ${sessionData.poop_level || 1},
           ${sessionData.notes || null}
         )
+        RETURNING *
       ` as any[];
 
       return (result[0] as Session) || null;
@@ -256,33 +227,22 @@ class AuthService {
     }
   }
 
-  // Get sessions for user
-  async getUserSessions(userId: string, limit: number = 50, offset: number = 0): Promise<Session[]> {
+  async getUserSessions(userId: string, _limit: number = 50, _offset: number = 0): Promise<Session[]> {
     try {
       const result = await sql`
-        SELECT id, user_id, duration_seconds, earnings, hourly_rate, started_at, ended_at, poop_level, notes, created_at
-        FROM sessions
+        SELECT * FROM sessions
         WHERE user_id = ${userId}
         ORDER BY created_at DESC
       ` as any[];
-
       return result as Session[];
     } catch (error) {
-      console.error('Get user sessions error:', error);
       return [];
     }
   }
 
-  // Get session statistics for user
-  async getUserStats(userId: string): Promise<{
-    totalSessions: number;
-    totalDuration: number;
-    totalEarnings: number;
-    averageEarnings: number;
-    averageDuration: number;
-  }> {
+  async getUserStats(userId: string) {
     try {
-      const result = await sql`
+      const statsResult = await sql`
         SELECT 
           COUNT(*) as total_sessions,
           SUM(duration_seconds) as total_duration,
@@ -293,52 +253,44 @@ class AuthService {
         WHERE user_id = ${userId}
       `;
 
-      const stats = result[0];
+      const weeklyResult = await sql`
+        SELECT COUNT(*) as sessions_last_7_days
+        FROM sessions
+        WHERE user_id = ${userId} AND started_at >= NOW() - INTERVAL '7 days'
+      `;
+
+      const stats = statsResult[0];
+      const weekly = weeklyResult[0];
+
       return {
         totalSessions: parseInt(stats.total_sessions) || 0,
         totalDuration: parseInt(stats.total_duration) || 0,
         totalEarnings: parseFloat(stats.total_earnings) || 0,
         averageEarnings: parseFloat(stats.avg_earnings) || 0,
         averageDuration: parseInt(stats.avg_duration) || 0,
+        sessionsLast7Days: parseInt(weekly.sessions_last_7_days) || 0
       };
     } catch (error) {
-      console.error('Get user stats error:', error);
-      return {
-        totalSessions: 0,
-        totalDuration: 0,
-        totalEarnings: 0,
-        averageEarnings: 0,
-        averageDuration: 0,
-      };
+      return { totalSessions: 0, totalDuration: 0, totalEarnings: 0, averageEarnings: 0, averageDuration: 0, sessionsLast7Days: 0 };
     }
   }
 
-  // Delete session
-  async deleteSession(sessionId: string, userId: string): Promise<boolean> {
-    try {
-      await sql`
-        DELETE FROM sessions 
-        WHERE id = ${sessionId} AND user_id = ${userId}
-      `;
-      return true;
-    } catch (error) {
-      console.error('Delete session error:', error);
-      return false;
-    }
-  }
-  // Update user salary
   async updateUserSalary(userId: string, hourlyRate: number): Promise<boolean> {
     try {
       await sql`
-        UPDATE users 
+        INSERT INTO user_profiles (user_id, hourly_rate, updated_at)
+        VALUES (${userId}, ${hourlyRate}, NOW())
+        ON CONFLICT (user_id) DO UPDATE 
         SET hourly_rate = ${hourlyRate}, updated_at = NOW()
-        WHERE id = ${userId}
       `;
       return true;
     } catch (error) {
-      console.error('Update user salary error:', error);
       return false;
     }
+  }
+
+  async logout() {
+    await authClient.signOut();
   }
 }
 

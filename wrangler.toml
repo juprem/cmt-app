@@ -5,3 +5,5 @@ pages_build_output_dir = "dist"
 
 [vars]
 VITE_NEON_DATABASE_URL = "postgresql://neondb_owner:npg_TxpBuUH26PtX@ep-misty-brook-abqk89qr-pooler.eu-west-2.aws.neon.tech/neondb?sslmode=require&channel_binding=require"
+VITE_NEON_AUTH_URL = "https://ep-misty-brook-abqk89qr.neonauth.eu-west-2.aws.neon.tech/neondb/auth"
+VITE_NEON_AUTH_PROJECT_ID = "hidden-silence-71780158"
