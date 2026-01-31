@@ -14,7 +14,7 @@ export default defineConfig({
     nodePolyfills(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'masked-icon.svg'],
+      includeAssets: ['favicon.svg', 'apple-touch-icon.svg', 'icon.svg'],
       manifest: {
         name: 'CTM - Compte Ta Merde',
         short_name: 'CTM',
@@ -27,36 +27,28 @@ export default defineConfig({
         start_url: '/',
         icons: [
           {
-            src: 'pwa-64x64.png',
+            src: 'pwa-64x64.svg',
             sizes: '64x64',
-            type: 'image/png'
+            type: 'image/svg+xml',
+            purpose: 'any'
           },
           {
-            src: 'pwa-192x192.png',
+            src: 'pwa-192x192.svg',
             sizes: '192x192',
-            type: 'image/png'
+            type: 'image/svg+xml',
+            purpose: 'any'
           },
           {
-            src: 'pwa-512x512.png',
+            src: 'pwa-512x512.svg',
             sizes: '512x512',
-            type: 'image/png',
-            purpose: 'any maskable'
-          }
-        ],
-        screenshots: [
-          {
-            src: 'screenshot-wide.png',
-            sizes: '1280x720',
-            type: 'image/png',
-            form_factor: 'wide',
-            label: 'CTM App - Main interface showing timer and earnings'
+            type: 'image/svg+xml',
+            purpose: 'any'
           },
           {
-            src: 'screenshot-narrow.png',
-            sizes: '640x1136',
-            type: 'image/png',
-            form_factor: 'narrow',
-            label: 'CTM App - Mobile timer view'
+            src: 'pwa-512x512.svg',
+            sizes: '512x512',
+            type: 'image/svg+xml',
+            purpose: 'maskable'
           }
         ]
       },

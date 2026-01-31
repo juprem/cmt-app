@@ -49,12 +49,12 @@ export const SalaryPage = () => {
           type="warning"
           showIcon
           icon={<AlertCircle className="text-yellow-500" />}
-          className="mb-8 bg-yellow-500/10 border-yellow-500/20 rounded-2xl"
+          className="mb-12 bg-yellow-500/10 border-yellow-500/20 rounded-2xl"
         />
       )}
 
       {/* Hourly Rate Card */}
-      <Card className="bg-slate-900 border-white/10 rounded-[2rem] overflow-hidden mb-8 shadow-2xl">
+      <Card className="bg-slate-900 border-white/10 rounded-[2rem] overflow-hidden mb-12 shadow-2xl">
         <div className="p-4">
           <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 block">Current Hourly Rate</label>
           <div className="flex items-center gap-4 mb-6">

@@ -91,7 +91,7 @@ define(['./workbox-2ae722a1'], (function (workbox) { 'use strict';
     "revision": "5d0155071611b5b3e6701d364a3f3469"
   }, {
     "url": "index.html",
-    "revision": "c2c6c24a1064837dc0b5a811d26350fe"
+    "revision": "8c2e2f46f990d138c246b26a3a35105e"
   }, {
     "url": "icon.svg",
     "revision": "e7c533b0b027837e540f40360fa38cd2"
@@ -102,10 +102,10 @@ define(['./workbox-2ae722a1'], (function (workbox) { 'use strict';
     "url": "apple-touch-icon.svg",
     "revision": "744d68cedc05da8e67813f954b9634c8"
   }, {
-    "url": "assets/index-DwDcvJaT.css",
+    "url": "assets/index-D1H9mmV7.css",
     "revision": null
   }, {
-    "url": "assets/index-DN0vInp5.js",
+    "url": "assets/index-BchuQ9he.js",
     "revision": null
   }, {
     "url": "manifest.webmanifest",
