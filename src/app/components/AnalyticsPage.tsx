@@ -23,7 +23,7 @@ export const AnalyticsPage = () => {
 
       try {
         const { authService } = await import('@/app/lib/auth');
-        
+
         // Load user statistics
         const stats = await authService.getUserStats(user.id);
         setUserStats(stats);
@@ -45,7 +45,7 @@ export const AnalyticsPage = () => {
     const hrs = Math.floor(seconds / 3600);
     const mins = Math.floor((seconds % 3600) / 60);
     const secs = seconds % 60;
-    
+
     if (hrs > 0) {
       return `${hrs}h ${mins}m ${secs}s`;
     } else if (mins > 0) {
@@ -60,14 +60,14 @@ export const AnalyticsPage = () => {
     const now = new Date();
     const diffTime = Math.abs(now.getTime() - d.getTime());
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-    
+
     if (diffDays === 0) {
       return `Today, ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
     } else if (diffDays === 1) {
       return `Yesterday, ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
     } else {
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' + 
-             d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) + ', ' +
+        d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
     }
   };
 
@@ -90,37 +90,37 @@ export const AnalyticsPage = () => {
       {/* 2x2 Stats Grid */}
       <div className="grid grid-cols-2 gap-4 mb-8">
         {[
-          { 
-            label: 'Total Gains', 
-            val: `€${userStats?.totalEarnings.toFixed(2) || '0.00'}`, 
-            sub: `From ${userStats?.totalSessions || 0} sessions`, 
-            icon: TrendingUp, 
-            color: 'text-green-400', 
-            bg: 'bg-green-400/10' 
+          {
+            label: 'Total Gains',
+            val: `€${Number(userStats?.totalEarnings || 0).toFixed(2)}`,
+            sub: `From ${userStats?.totalSessions || 0} sessions`,
+            icon: TrendingUp,
+            color: 'text-green-400',
+            bg: 'bg-green-400/10'
           },
-          { 
-            label: 'Time Invested', 
-            val: formatDuration(userStats?.totalDuration || 0), 
-            sub: 'Total bathroom time', 
-            icon: Clock, 
-            color: 'text-purple-400', 
-            bg: 'bg-purple-400/10' 
+          {
+            label: 'Time Invested',
+            val: formatDuration(userStats?.totalDuration || 0),
+            sub: 'Total bathroom time',
+            icon: Clock,
+            color: 'text-purple-400',
+            bg: 'bg-purple-400/10'
           },
-          { 
-            label: 'Avg Session', 
-            val: formatDuration(userStats?.averageDuration || 0), 
-            sub: 'Typical break length', 
-            icon: Calendar, 
-            color: 'text-blue-400', 
-            bg: 'bg-blue-400/10' 
+          {
+            label: 'Avg Session',
+            val: formatDuration(userStats?.averageDuration || 0),
+            sub: 'Typical break length',
+            icon: Calendar,
+            color: 'text-blue-400',
+            bg: 'bg-blue-400/10'
           },
-          { 
-            label: 'Avg Earnings', 
-            val: `€${userStats?.averageEarnings.toFixed(2) || '0.00'}`, 
-            sub: 'Per session average', 
-            icon: Trophy, 
-            color: 'text-yellow-400', 
-            bg: 'bg-yellow-400/10' 
+          {
+            label: 'Avg Earnings',
+            val: `€${Number(userStats?.averageEarnings || 0).toFixed(2)}`,
+            sub: 'Per session average',
+            icon: Trophy,
+            color: 'text-yellow-400',
+            bg: 'bg-yellow-400/10'
           },
         ].map((stat, i) => (
           <motion.div
@@ -149,10 +149,10 @@ export const AnalyticsPage = () => {
           </div>
           <div className="text-4xl">🎯</div>
         </div>
-        
-        <Progress 
-          percent={78} 
-          showInfo={false} 
+
+        <Progress
+          percent={78}
+          showInfo={false}
           strokeColor={{
             '0%': '#A855F7',
             '100%': '#EC4899',
@@ -160,7 +160,7 @@ export const AnalyticsPage = () => {
           strokeWidth={12}
           className="mb-4"
         />
-        
+
         <div className="flex justify-between text-[10px] font-black text-slate-500 uppercase tracking-tighter">
           <span className="flex items-center gap-1 opacity-50">🌱 Sprout</span>
           <span className="flex items-center gap-1 opacity-50">⭐ Pro</span>
@@ -174,11 +174,10 @@ export const AnalyticsPage = () => {
         <h5 className="text-slate-400 font-bold text-xs uppercase tracking-wider mb-4 px-2">Milestones</h5>
         <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
           {achievements.map((ach) => (
-            <div 
-              key={ach.id} 
-              className={`flex-shrink-0 w-32 h-40 rounded-3xl p-4 flex flex-col items-center justify-center text-center transition-all ${
-                ach.unlocked ? 'bg-gradient-to-b from-white/10 to-white/5 border border-white/20' : 'bg-black/20 border border-dashed border-white/5 grayscale opacity-50'
-              }`}
+            <div
+              key={ach.id}
+              className={`flex-shrink-0 w-32 h-40 rounded-3xl p-4 flex flex-col items-center justify-center text-center transition-all ${ach.unlocked ? 'bg-gradient-to-b from-white/10 to-white/5 border border-white/20' : 'bg-black/20 border border-dashed border-white/5 grayscale opacity-50'
+                }`}
             >
               <div className="text-4xl mb-3">{ach.icon}</div>
               <h6 className="text-[11px] font-black text-white leading-tight mb-1">{ach.name}</h6>
@@ -205,7 +204,7 @@ export const AnalyticsPage = () => {
                   </div>
                 </div>
                 <div className="text-right">
-                  <span className="text-sm font-black text-green-400">+€{session.earnings.toFixed(2)}</span>
+                  <span className="text-sm font-black text-green-400">+€{Number(session.earnings).toFixed(2)}</span>
                   {session.poop_level > 1 && (
                     <div className="text-[8px] text-slate-500">LVL {session.poop_level}</div>
                   )}
@@ -220,7 +219,7 @@ export const AnalyticsPage = () => {
           )}
         </div>
       </div>
-      
+
       <div className="h-10" /> {/* Spacer for bottom nav */}
     </div>
   );

@@ -74,8 +74,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
   }
 };
 
-interface AuthContextType {
-  ...AuthState;
+interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, name: string, password: string) => Promise<boolean>;
   logout: () => void;
@@ -102,8 +101,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const initializeAuth = async () => {
       const token = localStorage.getItem('auth_token');
       if (token) {
-        const decoded = authService.verifyToken(token);
-        if (decoded) {
+        const decoded = await authService.verifyToken(token) as { userId: string } | null;
+        if (decoded && decoded.userId) {
           const user = await authService.getUserById(decoded.userId);
           if (user) {
             dispatch({
@@ -127,7 +126,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const login = async (email: string, password: string): Promise<boolean> => {
     dispatch({ type: 'AUTH_START' });
     const result = await authService.login(email, password);
-    
+
     if (result.success && result.user && result.token) {
       localStorage.setItem('auth_token', result.token);
       dispatch({
@@ -144,7 +143,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const register = async (email: string, name: string, password: string): Promise<boolean> => {
     dispatch({ type: 'AUTH_START' });
     const result = await authService.register({ email, name, password });
-    
+
     if (result.success && result.user && result.token) {
       localStorage.setItem('auth_token', result.token);
       dispatch({

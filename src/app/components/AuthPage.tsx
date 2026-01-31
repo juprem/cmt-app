@@ -47,7 +47,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onClose }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-indigo-900 flex items-center justify-center p-6">
       <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
-      
+
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
@@ -184,12 +184,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onClose }) => {
             </p>
           </div>
 
-          {/* Demo Info */}
-          <div className="mt-8 p-4 bg-white/5 rounded-2xl border border-white/10">
-            <p className="text-xs text-slate-400 text-center">
-              💡 <strong>Demo:</strong> Create any account to get started. Your data is stored securely in Neon PostgreSQL.
-            </p>
-          </div>
+
         </div>
       </motion.div>
     </div>

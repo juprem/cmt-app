@@ -1,11 +1,10 @@
 import { neon } from '@neondatabase/serverless';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
+import * as jose from 'jose';
+// Environment variables in Vite are accessed via import.meta.env
 
-dotenv.config();
 
-const sql = neon(process.env.NEON_DATABASE_URL!);
+const sql = neon(import.meta.env.VITE_NEON_DATABASE_URL!);
 
 export interface User {
   id: string;
@@ -89,7 +88,7 @@ class AuthService {
       await sql`
         CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);
       `;
-      
+
       await sql`
         CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at DESC);
       `;
@@ -122,16 +121,16 @@ class AuthService {
         INSERT INTO users (email, name, password_hash)
         VALUES (${userData.email}, ${userData.name}, ${passwordHash})
         RETURNING id, email, name, created_at, updated_at
-      `;
+      ` as any[];
 
       const user = result[0];
-      
+
       // Generate JWT token
-      const token = jwt.sign(
-        { userId: user.id, email: user.email },
-        process.env.JWT_SECRET!,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-      );
+      const secret = new TextEncoder().encode(import.meta.env.VITE_JWT_SECRET!);
+      const token = await new jose.SignJWT({ userId: user.id, email: user.email })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setExpirationTime(import.meta.env.VITE_JWT_EXPIRES_IN || '7d')
+        .sign(secret);
 
       return {
         success: true,
@@ -157,7 +156,7 @@ class AuthService {
       const result = await sql`
         SELECT id, email, name, password_hash, created_at, updated_at
         FROM users WHERE email = ${email}
-      `;
+      ` as any[];
 
       if (result.length === 0) {
         return { success: false, error: 'Invalid email or password' };
@@ -172,11 +171,11 @@ class AuthService {
       }
 
       // Generate JWT token
-      const token = jwt.sign(
-        { userId: user.id, email: user.email },
-        process.env.JWT_SECRET!,
-        { expiresIn: process.env.JWT_EXPIRES_IN || '7d' }
-      );
+      const secret = new TextEncoder().encode(import.meta.env.VITE_JWT_SECRET!);
+      const token = await new jose.SignJWT({ userId: user.id, email: user.email })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setExpirationTime(import.meta.env.VITE_JWT_EXPIRES_IN || '7d')
+        .sign(secret);
 
       return {
         success: true,
@@ -196,9 +195,11 @@ class AuthService {
   }
 
   // Verify JWT token
-  verifyToken(token: string): any {
+  async verifyToken(token: string): Promise<any> {
     try {
-      return jwt.verify(token, process.env.JWT_SECRET!);
+      const secret = new TextEncoder().encode(import.meta.env.VITE_JWT_SECRET!);
+      const { payload } = await jose.jwtVerify(token, secret);
+      return payload;
     } catch (error) {
       return null;
     }
@@ -210,9 +211,9 @@ class AuthService {
       const result = await sql`
         SELECT id, email, name, created_at, updated_at
         FROM users WHERE id = ${userId}
-      `;
+      ` as any[];
 
-      return result[0] || null;
+      return (result[0] as Omit<User, 'password_hash'>) || null;
     } catch (error) {
       console.error('Get user error:', error);
       return null;
@@ -234,10 +235,9 @@ class AuthService {
           ${sessionData.poop_level || 1},
           ${sessionData.notes || null}
         )
-        RETURNING id, user_id, duration_seconds, earnings, hourly_rate, started_at, ended_at, poop_level, notes, created_at
-      `;
+      ` as any[];
 
-      return result[0] || null;
+      return (result[0] as Session) || null;
     } catch (error) {
       console.error('Create session error:', error);
       return null;
@@ -252,10 +252,9 @@ class AuthService {
         FROM sessions
         WHERE user_id = ${userId}
         ORDER BY created_at DESC
-        LIMIT ${limit} OFFSET ${offset}
-      `;
+      ` as any[];
 
-      return result;
+      return result as Session[];
     } catch (error) {
       console.error('Get user sessions error:', error);
       return [];
@@ -305,11 +304,11 @@ class AuthService {
   // Delete session
   async deleteSession(sessionId: string, userId: string): Promise<boolean> {
     try {
-      const result = await sql`
+      await sql`
         DELETE FROM sessions 
         WHERE id = ${sessionId} AND user_id = ${userId}
       `;
-      return result.count > 0;
+      return true;
     } catch (error) {
       console.error('Delete session error:', error);
       return false;
