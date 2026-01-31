@@ -9,7 +9,7 @@ const sounds = [
   { id: '5', emoji: '💥', label: 'Big Bang', file: 'big_bang.mp3', color: 'from-orange-400 to-red-600' },
   { id: '6', emoji: '🦆', label: 'The Quack', file: 'the_quack.mp3', color: 'from-green-400 to-teal-500' },
   { id: '7', emoji: '🔔', label: 'Notification', file: 'notification.mp3', color: 'from-sky-400 to-blue-600' },
-  { id: '8', emoji: '🤡', label: 'Honk Honk', file: 'honk_honk.mp3', color: 'from-pink-400 to-rose-600' },
+  { id: '8', emoji: '💨', label: 'The Gust', file: 'fart.mp3', color: 'from-pink-400 to-rose-600' },
 ];
 
 export const SoundboardPage = () => {
