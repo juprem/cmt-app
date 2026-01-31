@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useReducer, useEffect, ReactNode } from 'react';
-import { authService, authClient } from './auth';
+import { authService, authClient, type AuthResult } from './auth';
 
 export interface User {
   id: string;
@@ -60,7 +60,7 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
 };
 
 interface AuthContextType extends AuthState {
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<AuthResult>;
   register: (email: string, name: string, password: string) => Promise<boolean>;
   logout: () => void;
   updateSalary: (hourlyRate: number) => Promise<boolean>;
@@ -95,15 +95,15 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     initializeAuth();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<AuthResult> => {
     dispatch({ type: 'AUTH_START' });
     const result = await authService.login(email, password);
     if (result.success && result.user) {
       dispatch({ type: 'AUTH_SUCCESS', payload: { user: result.user } });
-      return true;
+    } else {
+      dispatch({ type: 'AUTH_FAILURE' });
     }
-    dispatch({ type: 'AUTH_FAILURE' });
-    return false;
+    return result;
   };
 
   const register = async (email: string, name: string, password: string): Promise<boolean> => {

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Eye, EyeOff, Mail, User, Lock, ArrowRight } from 'lucide-react';
 import { useAuth } from '../lib/AuthContext';
+import { toast } from 'sonner';
 
 interface AuthPageProps {
   onClose?: () => void;
@@ -32,9 +33,26 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onClose }) => {
     setErrors([]);
 
     if (isLogin) {
-      const success = await login(formData.email, formData.password);
-      if (!success) {
-        setErrors(['Invalid email or password']);
+      const result = await login(formData.email, formData.password);
+      if (!result.success) {
+        // If the error indicates the user doesn't exist, suggest registration
+        const isNotRegistered = result.error?.toLowerCase().includes('not found') ||
+          result.error?.toLowerCase().includes('no user');
+
+        if (isNotRegistered) {
+          toast.error("Account not found", {
+            description: "Please create an account to start tracking your sessions.",
+            action: {
+              label: "SIGN UP",
+              onClick: () => {
+                setIsLogin(false);
+                setErrors([]);
+              }
+            },
+            duration: 6000,
+          });
+        }
+        setErrors([result.error || 'Invalid email or password']);
       }
     } else {
       const success = await register(formData.email, formData.name, formData.password);
@@ -45,7 +63,7 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onClose }) => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-900 via-pink-900 to-indigo-900 flex items-center justify-center p-6">
+    <div className="h-screen w-full bg-gradient-to-br from-purple-900 via-pink-900 to-indigo-900 flex items-center justify-center p-6 overflow-hidden fixed inset-0">
       <div className="absolute inset-0 bg-black/20 backdrop-blur-sm" />
 
       <motion.div
@@ -183,8 +201,6 @@ export const AuthPage: React.FC<AuthPageProps> = ({ onClose }) => {
               </button>
             </p>
           </div>
-
-
         </div>
       </motion.div>
     </div>

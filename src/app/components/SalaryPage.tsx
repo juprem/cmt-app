@@ -10,7 +10,7 @@ export const SalaryPage = () => {
   const [isUpdating, setIsUpdating] = useState(false);
 
   // Calculator state
-  const [monthlySalary, setMonthlySalary] = useState<number>(0);
+  const [annualGross, setAnnualGross] = useState<number>(0);
   const [hoursPerWeek, setHoursPerWeek] = useState<number>(35);
 
   useEffect(() => {
@@ -26,10 +26,12 @@ export const SalaryPage = () => {
   };
 
   const calculateHourly = () => {
-    if (monthlySalary > 0 && hoursPerWeek > 0) {
-      // Calculation: (Monthly * 12) / (HoursPerWeek * 52)
-      const calculated = (monthlySalary * 12) / (hoursPerWeek * 52);
-      setHourlyRate(Number(calculated.toFixed(2)));
+    if (annualGross > 0 && hoursPerWeek > 0) {
+      // Calculation: (Annual Gross * 0.77 conversion) / (HoursPerWeek * 52)
+      // 0.77 is a standard approximation for Gross-to-Net in France
+      const netAnnual = annualGross * 0.77;
+      const hourlyNet = netAnnual / (hoursPerWeek * 52);
+      setHourlyRate(Number(hourlyNet.toFixed(2)));
     }
   };
 
@@ -56,7 +58,7 @@ export const SalaryPage = () => {
       {/* Hourly Rate Card */}
       <Card className="bg-slate-900 border-white/10 rounded-[2rem] overflow-hidden mb-12 shadow-2xl">
         <div className="p-4">
-          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 block">Current Hourly Rate</label>
+          <label className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4 block">Current Hourly Rate (Net)</label>
           <div className="flex items-center gap-4 mb-6">
             <div className="flex-1 relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold text-xl">€</span>
@@ -80,7 +82,7 @@ export const SalaryPage = () => {
             </Button>
           </div>
           <p className="text-slate-500 text-xs italic">
-            Tip: Your hourly rate is used to calculate earnings in real-time during your sessions.
+            Tip: Your hourly net rate is used to calculate earnings in real-time during your sessions.
           </p>
         </div>
       </Card>
@@ -92,19 +94,21 @@ export const SalaryPage = () => {
         <h3 className="text-xl font-black text-white flex items-center gap-2 mb-2">
           Wage Converter <Calculator size={20} className="text-purple-400" />
         </h3>
-        <p className="text-slate-500 text-sm">Don't know your hourly rate? Let's calculate it based on your contract.</p>
+        <p className="text-slate-500 text-sm">Convert your annual gross to hourly net based on your contract.</p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 mb-8">
         <div className="p-6 rounded-3xl bg-white/5 border border-white/10">
           <div className="space-y-6">
             <div>
-              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Monthly Net Salary (€)</label>
+              <label className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2 block">Annual Gross Salary (€)</label>
               <InputNumber
                 className="w-full bg-slate-800 border-slate-700 text-white h-12 rounded-xl flex items-center"
-                value={monthlySalary}
-                onChange={(val) => setMonthlySalary(val || 0)}
-                placeholder="2500"
+                value={annualGross}
+                onChange={(val) => setAnnualGross(val || 0)}
+                placeholder="42000"
+                formatter={(value) => `${value}`.replace(/\B(?=(\d{3})+(?!\d))/g, ' ')}
+                parser={(value) => value!.replace(/\s?|/g, '') as any}
               />
             </div>
             <div>

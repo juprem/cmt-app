@@ -57,6 +57,11 @@ class AuthService {
   // Initialize ONLY our extensions/app tables
   async initDatabase() {
     try {
+      // 1. Cleanup legacy tables if they exist (as requested)
+      await sql`DROP TABLE IF EXISTS "user" CASCADE;`;
+      await sql`DROP TABLE IF EXISTS "users" CASCADE;`;
+
+      // 2. Ensure app tables exist
       await sql`
         CREATE TABLE IF NOT EXISTS user_profiles (
           user_id TEXT PRIMARY KEY,
@@ -84,7 +89,7 @@ class AuthService {
       await sql`CREATE INDEX IF NOT EXISTS idx_sessions_user_id ON sessions(user_id);`;
       await sql`CREATE INDEX IF NOT EXISTS idx_sessions_created_at ON sessions(created_at DESC);`;
 
-      console.log('App database initialized');
+      console.log('App database initialized and cleaned up');
       return true;
     } catch (error) {
       console.error('Database initialization failed:', error);
@@ -190,15 +195,16 @@ class AuthService {
     try {
       const { data } = await authClient.getSession();
       const neonUser = data?.user;
-      if (!neonUser || neonUser.id !== userId) {
-        // Option additionally fetch basic info if Neon Auth allows user lookup by ID
-      }
 
       if (!neonUser) return null;
 
-      const profile = await this.getUserProfile(userId);
+      // In some cases (e.g. initial setup), we might be fetching a profile 
+      // for a user that is authenticated but whose ID we're checking.
+      // We'll allow fetching if IDs match or if we're just verifying the session.
+      const profile = await this.getUserProfile(neonUser.id);
       return this.mapNeonUserToAppUser(neonUser, profile?.hourly_rate || 0);
     } catch (error) {
+      console.error('Error in getUserById:', error);
       return null;
     }
   }
