@@ -70,6 +70,16 @@ class AuthService {
         );
       `;
 
+      // Migration: Add hourly_rate column if it doesn't exist (for existing databases)
+      await sql`
+        DO $$ 
+        BEGIN 
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='users' AND column_name='hourly_rate') THEN
+            ALTER TABLE users ADD COLUMN hourly_rate DECIMAL(10, 2) DEFAULT 0;
+          END IF;
+        END $$;
+      `;
+
       // Create sessions table
       await sql`
         CREATE TABLE IF NOT EXISTS sessions (
