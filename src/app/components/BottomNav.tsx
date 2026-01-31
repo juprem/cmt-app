@@ -12,9 +12,10 @@ function cn(...inputs: ClassValue[]) {
 interface BottomNavProps {
   activeTab: TabType;
   setActiveTab: (tab: TabType) => void;
+  disabled?: boolean;
 }
 
-export const BottomNav = ({ activeTab, setActiveTab }: BottomNavProps) => {
+export const BottomNav = ({ activeTab, setActiveTab, disabled }: BottomNavProps) => {
   const tabs = [
     { id: 'timer', icon: Timer, label: 'Timer', emoji: '💩' },
     { id: 'sounds', icon: Volume2, label: 'Sounds', emoji: '🔊' },
@@ -32,11 +33,14 @@ export const BottomNav = ({ activeTab, setActiveTab }: BottomNavProps) => {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id as TabType)}
-              className="relative flex flex-col items-center gap-1 min-w-[50px]"
+              onClick={() => (!disabled || tab.id === 'salary') && setActiveTab(tab.id as TabType)}
+              className={cn(
+                "relative flex flex-col items-center gap-1 min-w-[50px]",
+                disabled && tab.id !== 'salary' && "opacity-30 cursor-not-allowed pointer-events-none"
+              )}
             >
               <motion.div
-                whileTap={{ scale: 0.9 }}
+                whileTap={disabled && tab.id !== 'salary' ? undefined : { scale: 0.9 }}
                 className={cn(
                   "p-1.5 rounded-xl transition-all duration-300",
                   isActive ? "bg-gradient-to-tr from-purple-500 to-pink-500 text-white shadow-lg shadow-purple-500/20" : "text-slate-400"
@@ -61,7 +65,7 @@ export const BottomNav = ({ activeTab, setActiveTab }: BottomNavProps) => {
               )}>
                 {tab.label}
               </span>
-              
+
               {isActive && (
                 <motion.div
                   layoutId="activeTab"

@@ -5,6 +5,7 @@ export interface User {
   id: string;
   email: string;
   name: string;
+  hourly_rate?: number;
   created_at: Date;
   updated_at: Date;
 }
@@ -21,6 +22,7 @@ type AuthAction =
   | { type: 'AUTH_SUCCESS'; payload: { user: User; token: string } }
   | { type: 'AUTH_FAILURE' }
   | { type: 'LOGOUT' }
+  | { type: 'UPDATE_USER'; payload: User }
   | { type: 'INITIALIZE'; payload: { user: User | null; token: string | null } };
 
 const initialState: AuthState = {
@@ -61,6 +63,11 @@ const authReducer = (state: AuthState, action: AuthAction): AuthState => {
         isLoading: false,
         isAuthenticated: false,
       };
+    case 'UPDATE_USER':
+      return {
+        ...state,
+        user: action.payload,
+      };
     case 'INITIALIZE':
       return {
         ...state,
@@ -78,6 +85,8 @@ interface AuthContextType extends AuthState {
   login: (email: string, password: string) => Promise<boolean>;
   register: (email: string, name: string, password: string) => Promise<boolean>;
   logout: () => void;
+  updateSalary: (hourlyRate: number) => Promise<boolean>;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -162,11 +171,32 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     dispatch({ type: 'LOGOUT' });
   };
 
+  const refreshUser = async () => {
+    if (state.user) {
+      const updatedUser = await authService.getUserById(state.user.id);
+      if (updatedUser) {
+        dispatch({ type: 'UPDATE_USER', payload: updatedUser as User });
+      }
+    }
+  };
+
+  const updateSalary = async (hourlyRate: number): Promise<boolean> => {
+    if (!state.user) return false;
+    const success = await authService.updateUserSalary(state.user.id, hourlyRate);
+    if (success) {
+      await refreshUser();
+      return true;
+    }
+    return false;
+  };
+
   const value: AuthContextType = {
     ...state,
     login,
     register,
     logout,
+    updateSalary,
+    refreshUser,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

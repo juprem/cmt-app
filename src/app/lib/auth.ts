@@ -11,6 +11,7 @@ export interface User {
   email: string;
   name: string;
   password_hash: string;
+  hourly_rate?: number;
   created_at: Date;
   updated_at: Date;
 }
@@ -63,6 +64,7 @@ class AuthService {
           email VARCHAR(255) UNIQUE NOT NULL,
           name VARCHAR(255) NOT NULL,
           password_hash VARCHAR(255) NOT NULL,
+          hourly_rate DECIMAL(10, 2) DEFAULT 0,
           created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
           updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
         );
@@ -120,7 +122,7 @@ class AuthService {
       const result = await sql`
         INSERT INTO users (email, name, password_hash)
         VALUES (${userData.email}, ${userData.name}, ${passwordHash})
-        RETURNING id, email, name, created_at, updated_at
+        RETURNING id, email, name, hourly_rate, created_at, updated_at
       ` as any[];
 
       const user = result[0];
@@ -154,7 +156,7 @@ class AuthService {
     try {
       // Find user
       const result = await sql`
-        SELECT id, email, name, password_hash, created_at, updated_at
+        SELECT id, email, name, password_hash, hourly_rate, created_at, updated_at
         FROM users WHERE email = ${email}
       ` as any[];
 
@@ -209,7 +211,7 @@ class AuthService {
   async getUserById(userId: string): Promise<Omit<User, 'password_hash'> | null> {
     try {
       const result = await sql`
-        SELECT id, email, name, created_at, updated_at
+        SELECT id, email, name, hourly_rate, created_at, updated_at
         FROM users WHERE id = ${userId}
       ` as any[];
 
@@ -311,6 +313,20 @@ class AuthService {
       return true;
     } catch (error) {
       console.error('Delete session error:', error);
+      return false;
+    }
+  }
+  // Update user salary
+  async updateUserSalary(userId: string, hourlyRate: number): Promise<boolean> {
+    try {
+      await sql`
+        UPDATE users 
+        SET hourly_rate = ${hourlyRate}, updated_at = NOW()
+        WHERE id = ${userId}
+      `;
+      return true;
+    } catch (error) {
+      console.error('Update user salary error:', error);
       return false;
     }
   }

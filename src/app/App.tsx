@@ -11,26 +11,18 @@ import { AccountMenu } from '@/app/components/AccountMenu';
 import { AuthProvider, useAuth } from '@/app/lib/AuthContext';
 
 // Types
-export interface SalaryProfile {
-  id: string;
-  name: string;
-  hourlyRate: number;
-  isDefault: boolean;
-}
-
 export type TabType = 'timer' | 'sounds' | 'salary' | 'stats';
 
 function AppContent() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [activeTab, setActiveTab] = useState<TabType>('timer');
-  const [profiles, setProfiles] = useState<SalaryProfile[]>([
-    { id: '1', name: 'Standard Job', hourlyRate: 35, isDefault: true },
-    { id: '2', name: 'Freelance Gig', hourlyRate: 85, isDefault: false },
-    { id: '3', name: 'The "Big Corp" Shit', hourlyRate: 120, isDefault: false },
-  ]);
-  const [activeProfileId, setActiveProfileId] = useState<string>('1');
 
-  const currentProfile = profiles.find(p => p.id === activeProfileId) || profiles[0];
+  // Salary Gate: If user hasn't set an hourly rate, force them to the salary page
+  useEffect(() => {
+    if (isAuthenticated && (!user?.hourly_rate || Number(user.hourly_rate) <= 0) && activeTab !== 'salary') {
+      setActiveTab('salary');
+    }
+  }, [isAuthenticated, user?.hourly_rate, activeTab]);
 
   // Initialize database on app start
   useEffect(() => {
@@ -62,6 +54,9 @@ function AppContent() {
     return <AuthPage />;
   }
 
+  const hasSalarySet = user?.hourly_rate && Number(user.hourly_rate) > 0;
+
+
   return (
     <ConfigProvider
       theme={{
@@ -73,7 +68,8 @@ function AppContent() {
       }}
     >
       <div className="flex flex-col h-screen w-full bg-slate-950 text-white overflow-hidden safe-area-bottom">
-        <style dangerouslySetInnerHTML={{ __html: `
+        <style dangerouslySetInnerHTML={{
+          __html: `
           :root {
             --sat: env(safe-area-inset-top);
             --sar: env(safe-area-inset-right);
@@ -99,27 +95,20 @@ function AppContent() {
             animation: rainbow-pulse 10s linear infinite;
           }
         `}} />
-        
+
         {/* Account Menu */}
         <AccountMenu />
-        
+
         {/* Main Content Area */}
         <div className="flex-1 overflow-y-auto relative pb-20">
-          {activeTab === 'timer' && <TimerPage hourlyRate={currentProfile.hourlyRate} />}
+          {activeTab === 'timer' && <TimerPage hourlyRate={Number(user?.hourly_rate || 0)} />}
           {activeTab === 'sounds' && <SoundboardPage />}
-          {activeTab === 'salary' && (
-            <SalaryPage 
-              profiles={profiles} 
-              setProfiles={setProfiles} 
-              activeProfileId={activeProfileId}
-              setActiveProfileId={setActiveProfileId}
-            />
-          )}
+          {activeTab === 'salary' && <SalaryPage />}
           {activeTab === 'stats' && <AnalyticsPage />}
         </div>
 
         {/* Bottom Navigation */}
-      <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} />
+        <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} disabled={!hasSalarySet} />
       </div>
     </ConfigProvider>
   );
