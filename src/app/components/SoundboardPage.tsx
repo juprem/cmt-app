@@ -2,20 +2,21 @@ import React from 'react';
 import { motion } from 'framer-motion';
 
 const sounds = [
-  { id: '1', emoji: '🎺', label: 'Victory Toot', color: 'from-yellow-400 to-orange-500' },
-  { id: '2', emoji: '🌊', label: 'Tidal Wave', color: 'from-blue-400 to-indigo-500' },
-  { id: '3', emoji: '🚀', label: 'Blast Off', color: 'from-red-400 to-pink-500' },
-  { id: '4', emoji: '🎸', label: 'Rock Out', color: 'from-purple-400 to-indigo-600' },
-  { id: '5', emoji: '💥', label: 'Big Bang', color: 'from-orange-400 to-red-600' },
-  { id: '6', emoji: '🦆', label: 'The Quack', color: 'from-green-400 to-teal-500' },
-  { id: '7', emoji: '🔔', label: 'Notification', color: 'from-sky-400 to-blue-600' },
-  { id: '8', emoji: '🤡', label: 'Honk Honk', color: 'from-pink-400 to-rose-600' },
+  { id: '1', emoji: '🎺', label: 'Victory Toot', file: 'victory_toot.mp3', color: 'from-yellow-400 to-orange-500' },
+  { id: '2', emoji: '🌊', label: 'Tidal Wave', file: 'tidal_wave.mp3', color: 'from-blue-400 to-indigo-500' },
+  { id: '3', emoji: '🚀', label: 'Blast Off', file: 'blast_off.mp3', color: 'from-red-400 to-pink-500' },
+  { id: '4', emoji: '🎸', label: 'Rock Out', file: 'rock_out.mp3', color: 'from-purple-400 to-indigo-600' },
+  { id: '5', emoji: '💥', label: 'Big Bang', file: 'big_bang.mp3', color: 'from-orange-400 to-red-600' },
+  { id: '6', emoji: '🦆', label: 'The Quack', file: 'the_quack.mp3', color: 'from-green-400 to-teal-500' },
+  { id: '7', emoji: '🔔', label: 'Notification', file: 'notification.mp3', color: 'from-sky-400 to-blue-600' },
+  { id: '8', emoji: '🤡', label: 'Honk Honk', file: 'honk_honk.mp3', color: 'from-pink-400 to-rose-600' },
 ];
 
 export const SoundboardPage = () => {
-  const handlePlay = (label: string) => {
-    // In a real app, this would play an audio file
-    console.log(`Playing sound: ${label}`);
+  const handlePlay = (file: string) => {
+    const audio = new Audio(`/sounds/${file}`);
+    audio.play().catch(err => console.error('Error playing sound:', err));
+
     if ('vibrate' in navigator) {
       navigator.vibrate(50);
     }
@@ -34,26 +35,27 @@ export const SoundboardPage = () => {
             key={sound.id}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.95 }}
-            onClick={() => handlePlay(sound.label)}
+            onClick={() => handlePlay(sound.file)}
             className={`relative flex flex-col items-center justify-center gap-2 rounded-3xl p-6 bg-gradient-to-br ${sound.color} shadow-lg shadow-black/20 group overflow-hidden border border-white/10`}
           >
+
             {/* Glossy overlay */}
             <div className="absolute inset-0 bg-gradient-to-tr from-white/20 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-            
+
             <span className="text-5xl group-active:scale-125 transition-transform duration-200">
               {sound.emoji}
             </span>
             <span className="text-[10px] font-black uppercase tracking-widest text-white/90">
               {sound.label}
             </span>
-            
+
             {/* Visual ripple effect element (CSS only) */}
             <div className="absolute inset-0 pointer-events-none overflow-hidden">
-               <motion.div 
-                 initial={{ scale: 0, opacity: 0 }}
-                 whileTap={{ scale: 4, opacity: 0.3 }}
-                 className="absolute inset-0 bg-white rounded-full m-auto w-10 h-10"
-               />
+              <motion.div
+                initial={{ scale: 0, opacity: 0 }}
+                whileTap={{ scale: 4, opacity: 0.3 }}
+                className="absolute inset-0 bg-white rounded-full m-auto w-10 h-10"
+              />
             </div>
           </motion.button>
         ))}
