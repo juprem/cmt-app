@@ -108,8 +108,26 @@ define(['./workbox-2ae722a1'], (function (workbox) { 'use strict';
     "url": "assets/index-BchuQ9he.js",
     "revision": null
   }, {
+    "url": "apple-touch-icon.svg",
+    "revision": "744d68cedc05da8e67813f954b9634c8"
+  }, {
+    "url": "favicon.svg",
+    "revision": "acb9ed0929d5be4019cd310f2466acaf"
+  }, {
+    "url": "icon.svg",
+    "revision": "e7c533b0b027837e540f40360fa38cd2"
+  }, {
+    "url": "pwa-192x192.svg",
+    "revision": "5d0155071611b5b3e6701d364a3f3469"
+  }, {
+    "url": "pwa-512x512.svg",
+    "revision": "ed2db2c3722c7047c871da90a50b263e"
+  }, {
+    "url": "pwa-64x64.svg",
+    "revision": "bc2501f8f41f40eedcb6373c11f35e24"
+  }, {
     "url": "manifest.webmanifest",
-    "revision": "0082fdd0be63958b36180b029a15ee13"
+    "revision": "11980ffb19c23f9b616e37d048f32d7a"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("index.html")));

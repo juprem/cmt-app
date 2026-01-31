@@ -9,6 +9,7 @@ import { BottomNav } from '@/app/components/BottomNav';
 import { AuthPage } from '@/app/components/AuthPage';
 import { AccountMenu } from '@/app/components/AccountMenu';
 import { AuthProvider, useAuth } from '@/app/lib/AuthContext';
+import { TimerProvider } from '@/app/lib/TimerContext';
 
 // Types
 export type TabType = 'timer' | 'sounds' | 'salary' | 'stats';
@@ -68,47 +69,49 @@ function AppContent() {
       }}
     >
       <div className="flex flex-col h-screen w-full bg-slate-950 text-white overflow-hidden safe-area-bottom">
-        <style dangerouslySetInnerHTML={{
-          __html: `
-          :root {
-            --sat: env(safe-area-inset-top);
-            --sar: env(safe-area-inset-right);
-            --sab: env(safe-area-inset-bottom);
-            --sal: env(safe-area-inset-left);
-          }
-          .safe-area-bottom {
-            padding-bottom: var(--sab);
-          }
-          .no-scrollbar::-webkit-scrollbar {
-            display: none;
-          }
-          .no-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-          }
-          @keyframes rainbow-pulse {
-            0% { filter: hue-rotate(0deg) brightness(1); }
-            50% { filter: hue-rotate(180deg) brightness(1.2); }
-            100% { filter: hue-rotate(360deg) brightness(1); }
-          }
-          .animate-rainbow {
-            animation: rainbow-pulse 10s linear infinite;
-          }
-        `}} />
+        <TimerProvider hourlyRate={Number(user?.hourly_rate || 0)}>
+          <style dangerouslySetInnerHTML={{
+            __html: `
+            :root {
+              --sat: env(safe-area-inset-top);
+              --sar: env(safe-area-inset-right);
+              --sab: env(safe-area-inset-bottom);
+              --sal: env(safe-area-inset-left);
+            }
+            .safe-area-bottom {
+              padding-bottom: var(--sab);
+            }
+            .no-scrollbar::-webkit-scrollbar {
+              display: none;
+            }
+            .no-scrollbar {
+              -ms-overflow-style: none;
+              scrollbar-width: none;
+            }
+            @keyframes rainbow-pulse {
+              0% { filter: hue-rotate(0deg) brightness(1); }
+              50% { filter: hue-rotate(180deg) brightness(1.2); }
+              100% { filter: hue-rotate(360deg) brightness(1); }
+            }
+            .animate-rainbow {
+              animation: rainbow-pulse 10s linear infinite;
+            }
+          `}} />
 
-        {/* Account Menu */}
-        <AccountMenu />
+          {/* Account Menu */}
+          <AccountMenu />
 
-        {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto relative pb-20">
-          {activeTab === 'timer' && <TimerPage hourlyRate={Number(user?.hourly_rate || 0)} />}
-          {activeTab === 'sounds' && <SoundboardPage />}
-          {activeTab === 'salary' && <SalaryPage />}
-          {activeTab === 'stats' && <AnalyticsPage />}
-        </div>
+          {/* Main Content Area */}
+          <div className="flex-1 overflow-y-auto relative pb-20">
+            {activeTab === 'timer' && <TimerPage hourlyRate={Number(user?.hourly_rate || 0)} />}
+            {activeTab === 'sounds' && <SoundboardPage />}
+            {activeTab === 'salary' && <SalaryPage />}
+            {activeTab === 'stats' && <AnalyticsPage />}
+          </div>
 
-        {/* Bottom Navigation */}
-        <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} disabled={!hasSalarySet} />
+          {/* Bottom Navigation */}
+          <BottomNav activeTab={activeTab} setActiveTab={setActiveTab} disabled={!hasSalarySet} />
+        </TimerProvider>
       </div>
     </ConfigProvider>
   );
